@@ -1123,6 +1123,13 @@ ccl_device void osl_closure_diffuse_ramp_setup(KernelGlobals kg,
   for (int i = 0; i < 8; i++)
     bsdf->colors[i] = closure->colors[i];
 
+  if (!bsdf->colors_pos) {
+    return;
+  }
+
+  for (int i = 0; i < 8; i++)
+    bsdf->colors_pos[i] = closure->colors_pos[i];
+
   sd->flag |= bsdf_diffuse_ramp_setup(bsdf);
 }
 
@@ -1148,6 +1155,13 @@ ccl_device void osl_closure_phong_ramp_setup(KernelGlobals kg,
 
   for (int i = 0; i < 8; i++)
     bsdf->colors[i] = closure->colors[i];
+
+    if (!bsdf->colors_pos) {
+    return;
+  }
+
+  for (int i = 0; i < 8; i++)
+    bsdf->colors_pos[i] = closure->colors_pos[i];
 
   sd->flag |= bsdf_phong_ramp_setup(bsdf);
 }

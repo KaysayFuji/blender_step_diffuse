@@ -19,15 +19,22 @@ typedef struct DiffuseRampBsdf {
   SHADER_CLOSURE_BASE;
 
   ccl_private float3 *colors;
+  ccl_private float *colors_pos;
 } DiffuseRampBsdf;
 
 static_assert(sizeof(ShaderClosure) >= sizeof(DiffuseRampBsdf), "DiffuseRampBsdf is too large!");
 
-ccl_device float3 bsdf_diffuse_ramp_get_color(const float3 colors[8], float pos)
+ccl_device float3 bsdf_diffuse_ramp_get_color(const float3 colors[8], const float colors_pos[8], float pos)
 {
   int MAXCOLORS = 8;
 
-  float npos = pos * (float)(MAXCOLORS - 1);
+  float npos = colors_pos[0];
+  for (int i = 1; i < MAXCOLORS; i++) {
+    if (pos < colors_pos[i]) {
+      npos = (float)(i - 1) + (pos - colors_pos[i - 1]) / (colors_pos[i] - colors_pos[i - 1]);
+      break;
+    }
+  }
   int ipos = float_to_int(npos);
   if (ipos < 0)
     return colors[0];
@@ -56,7 +63,8 @@ ccl_device Spectrum bsdf_diffuse_ramp_eval(ccl_private const ShaderClosure *sc,
   float cosNO = fmaxf(dot(N, wo), 0.0f);
   if (cosNO >= 0.0f) {
     *pdf = cosNO * M_1_PI_F;
-    return rgb_to_spectrum(bsdf_diffuse_ramp_get_color(bsdf->colors, cosNO) * M_1_PI_F);
+    return rgb_to_spectrum(bsdf_diffuse_ramp_get_color(bsdf->colors, bsdf->colors_pos, cosNO) *
+                           M_1_PI_F);
   }
   else {
     *pdf = 0.0f;
@@ -80,7 +88,8 @@ ccl_device int bsdf_diffuse_ramp_sample(ccl_private const ShaderClosure *sc,
   sample_cos_hemisphere(N, randu, randv, wo, pdf);
 
   if (dot(Ng, *wo) > 0.0f) {
-    *eval = rgb_to_spectrum(bsdf_diffuse_ramp_get_color(bsdf->colors, *pdf * M_PI_F) * M_1_PI_F);
+    *eval = rgb_to_spectrum(
+        bsdf_diffuse_ramp_get_color(bsdf->colors, bsdf->colors_pos, *pdf * M_PI_F) * M_1_PI_F);
   }
   else {
     *pdf = 0.0f;
